@@ -1,5 +1,5 @@
 ﻿<#
-LoL OBS Scene Switcher v0.1.0
+LoL OBS Scene Switcher v0.1.1
 League of Legends の試合開始/終了を検知して、OBSのシーンを自動で切り替える。
 
 - 監視するもの : "League of Legends.exe" プロセスが存在するか(Get-Process)のみ。
@@ -17,7 +17,7 @@ param([switch]$NoGui)   # -NoGui: 関数だけ読み込む(テスト用)
 $ErrorActionPreference = 'Stop'
 
 $script:AppName     = 'LoL OBS Scene Switcher'
-$script:AppVersion  = '0.1.0'
+$script:AppVersion  = '0.1.1'
 $script:ProcessName = 'League of Legends'   # ロビー(LeagueClient)ではなく試合本体
 $script:SettingsDir  = Join-Path $env:APPDATA 'LolObsSceneSwitcher'
 $script:SettingsPath = Join-Path $script:SettingsDir 'settings.json'
@@ -224,7 +224,7 @@ function Start-Gui {
     $font = New-Object System.Drawing.Font('Yu Gothic UI', 9)
     $form = New-Object System.Windows.Forms.Form
     $form.Text = "$script:AppName v$script:AppVersion"
-    $form.ClientSize = New-Object System.Drawing.Size(444, 404)
+    $form.ClientSize = New-Object System.Drawing.Size(444, 440)
     $form.FormBorderStyle = 'FixedSingle'
     $form.MaximizeBox = $false
     $form.StartPosition = 'CenterScreen'
@@ -241,27 +241,30 @@ function Start-Gui {
     }
 
     # 1. OBS接続
-    $g1 = Add-Ctl $form (New-Object System.Windows.Forms.GroupBox) 12 10 420 128 '1. OBS接続 (WebSocket)'
+    $g1 = Add-Ctl $form (New-Object System.Windows.Forms.GroupBox) 12 10 420 164 '1. OBS接続 (WebSocket)'
     Add-Ctl $g1 (New-Object System.Windows.Forms.Label) 12 28 60 20 'ホスト' | Out-Null
     $tbHost = Add-Ctl $g1 (New-Object System.Windows.Forms.TextBox) 82 25 140 22
     Add-Ctl $g1 (New-Object System.Windows.Forms.Label) 236 28 50 20 'ポート' | Out-Null
     $tbPort = Add-Ctl $g1 (New-Object System.Windows.Forms.TextBox) 290 25 70 22
-    Add-Ctl $g1 (New-Object System.Windows.Forms.Label) 12 60 70 20 'パスワード' | Out-Null
-    $tbPass = Add-Ctl $g1 (New-Object System.Windows.Forms.TextBox) 82 57 278 22
+    Add-Ctl $g1 (New-Object System.Windows.Forms.Label) 12 58 300 20 'OBS WebSocket パスワード' | Out-Null
+    $tbPass = Add-Ctl $g1 (New-Object System.Windows.Forms.TextBox) 12 80 286 22
     $tbPass.UseSystemPasswordChar = $true
-    $btnConnect = Add-Ctl $g1 (New-Object System.Windows.Forms.Button) 82 88 278 28 '接続 / シーン一覧を更新'
+    $btnHelp = Add-Ctl $g1 (New-Object System.Windows.Forms.Button) 306 78 100 26 '？ 確認方法'
+    $lblHint = Add-Ctl $g1 (New-Object System.Windows.Forms.Label) 12 106 396 18 'OBS → ツール → WebSocketサーバー設定 で確認できます'
+    $lblHint.ForeColor = [System.Drawing.Color]::DimGray
+    $btnConnect = Add-Ctl $g1 (New-Object System.Windows.Forms.Button) 12 128 394 28 '接続 / シーン一覧を更新'
 
     # 2. シーン
-    $g2 = Add-Ctl $form (New-Object System.Windows.Forms.GroupBox) 12 146 420 100 '2. シーン設定'
+    $g2 = Add-Ctl $form (New-Object System.Windows.Forms.GroupBox) 12 182 420 100 '2. シーン設定'
     Add-Ctl $g2 (New-Object System.Windows.Forms.Label) 12 30 80 20 '試合中のシーン' | Out-Null
     $cbGame = Add-Ctl $g2 (New-Object System.Windows.Forms.ComboBox) 110 27 290 24
     Add-Ctl $g2 (New-Object System.Windows.Forms.Label) 12 64 80 20 '試合外のシーン' | Out-Null
     $cbIdle = Add-Ctl $g2 (New-Object System.Windows.Forms.ComboBox) 110 61 290 24
 
-    $chkEnabled = Add-Ctl $form (New-Object System.Windows.Forms.CheckBox) 16 254 300 22 '自動切替を有効にする'
+    $chkEnabled = Add-Ctl $form (New-Object System.Windows.Forms.CheckBox) 16 290 300 22 '自動切替を有効にする'
 
     # 3. 状態
-    $g3 = Add-Ctl $form (New-Object System.Windows.Forms.GroupBox) 12 282 420 084 '状態'
+    $g3 = Add-Ctl $form (New-Object System.Windows.Forms.GroupBox) 12 318 420 084 '状態'
     $lblObs  = Add-Ctl $g3 (New-Object System.Windows.Forms.Label) 12 22 396 20
     $lblLol  = Add-Ctl $g3 (New-Object System.Windows.Forms.Label) 12 44 396 20
     $lblLast = Add-Ctl $g3 (New-Object System.Windows.Forms.Label) 12 62 396 18
@@ -269,7 +272,7 @@ function Start-Gui {
     $lblLol.Font = $lblObs.Font
     $lblLast.ForeColor = [System.Drawing.Color]::DimGray
 
-    $lblFoot = Add-Ctl $form (New-Object System.Windows.Forms.Label) 14 374 420 24 "通信先は設定したOBSのみ。外部サーバーへの送信・テレメトリなし。"
+    $lblFoot = Add-Ctl $form (New-Object System.Windows.Forms.Label) 14 408 420 24 "通信先は設定したOBSのみ。外部サーバーへの送信・テレメトリなし。"
     $lblFoot.ForeColor = [System.Drawing.Color]::DimGray
 
     # 値の反映
@@ -375,6 +378,24 @@ function Start-Gui {
         Update-StatusView
     }
 
+    $btnHelp.Add_Click({
+        $msg = @(
+            'OBS WebSocket パスワードの確認方法',
+            '',
+            '1. OBS のメニュー「ツール」→「WebSocketサーバー設定」を開く',
+            '2. 「WebSocketサーバーを有効にする」にチェックを入れる',
+            '3. 「認証を有効にする」にチェックを入れる',
+            '4. 「サーバーパスワード」に表示されている文字列を、このツールの',
+            '   「OBS WebSocket パスワード」欄に入力する',
+            '   (「パスワードを生成」で新しく作ってもOKです)',
+            '5. 「サーバーポート」の数字(ふつうは 4455)を、このツールの「ポート」に入力する',
+            '6. 「接続 / シーン一覧を更新」を押す',
+            '',
+            '※ OBS 28 以降は WebSocket が標準で入っています。',
+            '※ 認証を有効にしていない場合、パスワードは空欄で接続できます。'
+        ) -join "`n"
+        [System.Windows.Forms.MessageBox]::Show($msg, 'OBS WebSocket の設定場所') | Out-Null
+    })
     $btnConnect.Add_Click({
         Save-FromFields
         Disconnect-Obs
